@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ziskup</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="stylesheet" href="css/style.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sb-logo">Ziskup<span>.</span></div>
+
+    <div class="sb-section">Navigace</div>
+    <button class="sb-btn active" id="navDash" onclick="showView('dashboard')">
+      <span class="sb-dot"></span> Dashboard
+    </button>
+    <button class="sb-btn" id="navMonth" onclick="showView('month')">
+      <span class="sb-dot"></span> Mesicni prehled
+    </button>
+
+    <div class="sb-section" style="margin-top:8px">Mesice</div>
+    <div class="sb-months" id="sbMonths"></div>
+    <button class="sb-new-month" onclick="openNewMonth()">+ Novy mesic</button>
+
+    <div class="sb-footer">
+      <button class="sb-footer-btn" onclick="exportData()">Export JSON</button>
+      <label class="sb-footer-btn">Import JSON
+        <input type="file" accept=".json" id="importFile" onchange="importData(event)">
+      </label>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- WELCOME -->
+    <div id="viewWelcome" class="welcome">
+      <div class="welcome-title">Ziskup<span style="color:var(--blue)">.</span></div>
+      <p>Vyber mesic vlevo nebo vytvor novy.</p>
+    </div>
+
+    <!-- ══════════════ DASHBOARD ══════════════ -->
+    <div class="view" id="viewDashboard">
+
+      <div class="view-header">
+        <div>
+          <div class="page-title">Dashboard</div>
+          <div class="page-subtitle">Souhrnny prehled za vybrane obdobi</div>
+        </div>
+      </div>
+
+      <!-- Filter -->
+      <div class="dash-filter">
+        <span class="filter-label">Obdobi:</span>
+        <select class="filter-select" id="dashFromY"></select>
+        <select class="filter-select" id="dashFromM"></select>
+        <span class="filter-sep">—</span>
+        <select class="filter-select" id="dashToY"></select>
+        <select class="filter-select" id="dashToM"></select>
+        <button class="filter-btn" onclick="renderDashboard()">Zobrazit</button>
+        <button class="filter-btn ghost" onclick="dashCurrentYear()">Tento rok</button>
+        <button class="filter-btn ghost" onclick="dashAllTime()">Vse</button>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="cards cards-4">
+        <div class="card accent-green">
+          <div class="card-label">Celkove prijmy</div>
+          <div class="card-value green" id="dIncome">0 Kč</div>
+          <div class="card-sub" id="dIncomeSub"></div>
+        </div>
+        <div class="card accent-red">
+          <div class="card-label">Celkove vydaje</div>
+          <div class="card-value red" id="dExpense">0 Kč</div>
+          <div class="card-sub" id="dExpenseSub"></div>
+        </div>
+        <div class="card accent-bal">
+          <div class="card-label">Bilance</div>
+          <div class="card-value yellow" id="dBalance">0 Kč</div>
+          <div class="card-sub" id="dBalanceSub"></div>
+        </div>
+        <div class="card accent-avg">
+          <div class="card-label">Pocet mesicu</div>
+          <div class="card-value neutral" id="dMonths">0</div>
+          <div class="card-sub" id="dMonthsSub"></div>
+        </div>
+      </div>
+
+      <!-- Grafy příjmy/výdaje podle kategorií -->
+      <div class="charts-row">
+        <div class="chart-block">
+          <div class="chart-block-title">Prijmy podle kategorie</div>
+          <div class="chart-wrap"><canvas id="chartIncomeCat"></canvas></div>
+        </div>
+        <div class="chart-block">
+          <div class="chart-block-title">Vydaje podle kategorie</div>
+          <div class="chart-wrap"><canvas id="chartExpenseCat"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Přehled kategorií — top příjmy a výdaje + bilance na měsíc -->
+      <div class="two-col">
+        <div class="chart-block">
+          <div class="chart-block-title">Bilance po mesicich</div>
+          <div class="chart-wrap"><canvas id="chartBalLine"></canvas></div>
+        </div>
+        <div class="chart-block">
+          <div class="chart-block-title">Vydaje po kategoriich — rozpad</div>
+          <div id="catBreakdown" class="cat-breakdown"></div>
+        </div>
+      </div>
+
+      <!-- Auto tables -->
+      <div class="two-col">
+        <div class="table-block">
+          <div class="table-block-header">
+            <span class="table-block-title t-green">Prijmy</span>
+            <span class="table-block-sum green" id="dTableIncSum">0 Kč</span>
+          </div>
+          <table class="ft">
+            <thead><tr><th>Polozka</th><th>Kategorie</th><th class="tr">Castka</th></tr></thead>
+            <tbody id="dTableInc"></tbody>
+          </table>
+        </div>
+        <div class="table-block">
+          <div class="table-block-header">
+            <span class="table-block-title t-red">Vydaje</span>
+            <span class="table-block-sum red" id="dTableExpSum">0 Kč</span>
+          </div>
+          <table class="ft">
+            <thead><tr><th>Polozka</th><th>Kategorie</th><th class="tr">Castka</th></tr></thead>
+            <tbody id="dTableExp"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ══════════════ MONTH VIEW ══════════════ -->
+    <div class="view" id="viewMonth">
+
+      <div class="view-header">
+        <div><div class="page-title" id="mTitle">—</div></div>
+        <button class="filter-btn ghost small" onclick="addCustomCategory()">+ Vlastni kategorie</button>
+      </div>
+
+      <!-- Karty -->
+      <div class="cards cards-3">
+        <div class="card accent-green">
+          <div class="card-label">Prijmy</div>
+          <div class="card-value green" id="mIncome">0 Kč</div>
+        </div>
+        <div class="card accent-red">
+          <div class="card-label">Vydaje</div>
+          <div class="card-value red" id="mExpense">0 Kč</div>
+        </div>
+        <div class="card accent-bal">
+          <div class="card-label">Bilance</div>
+          <div class="card-value yellow" id="mBalance">0 Kč</div>
+        </div>
+      </div>
+
+      <!-- Grafy příjmy/výdaje podle kategorií -->
+      <div class="charts-row">
+        <div class="chart-block">
+          <div class="chart-block-title">Prijmy podle kategorie</div>
+          <div class="chart-wrap"><canvas id="mChartInc"></canvas></div>
+        </div>
+        <div class="chart-block">
+          <div class="chart-block-title">Vydaje podle kategorie</div>
+          <div class="chart-wrap"><canvas id="mChartExp"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Auto tabulky -->
+      <div class="two-col">
+        <div class="table-block">
+          <div class="table-block-header">
+            <span class="table-block-title t-green">Prijmy</span>
+            <span class="table-block-sum green" id="mIncSum">0 Kč</span>
+          </div>
+          <table class="ft">
+            <thead><tr><th>Polozka</th><th>Kategorie</th><th class="tr">Castka</th></tr></thead>
+            <tbody id="mTableInc"></tbody>
+          </table>
+        </div>
+        <div class="table-block">
+          <div class="table-block-header">
+            <span class="table-block-title t-red">Vydaje</span>
+            <span class="table-block-sum red" id="mExpSum">0 Kč</span>
+          </div>
+          <table class="ft">
+            <thead><tr><th>Polozka</th><th>Kategorie</th><th class="tr">Castka</th></tr></thead>
+            <tbody id="mTableExp"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Podtabulky -->
+      <div class="sub-label">Podtabulky</div>
+      <div class="sub-grid" id="subGrid"></div>
+
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modalMonth">
+  <div class="modal">
+    <div class="modal-head">Novy mesic</div>
+    <div class="modal-body">
+      <label>Rok</label>
+      <input type="number" id="mYear" min="2000" max="2100">
+      <label>Mesic</label>
+      <select id="mMonth">
+        <option value="1">Leden</option><option value="2">Unor</option>
+        <option value="3">Brezen</option><option value="4">Duben</option>
+        <option value="5">Kveten</option><option value="6">Cerven</option>
+        <option value="7">Cervenec</option><option value="8">Srpen</option>
+        <option value="9">Zari</option><option value="10">Rijen</option>
+        <option value="11">Listopad</option><option value="12">Prosinec</option>
+      </select>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-ghost" onclick="closeModal('modalMonth')">Zrusit</button>
+      <button class="btn-primary" onclick="confirmNewMonth()">Vytvorit</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="js/app.js"></script>
+</body>
+</html>
